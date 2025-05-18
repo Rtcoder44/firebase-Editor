@@ -1,4 +1,4 @@
-export type ElementType = 'heading' | 'text' | 'image' | 'button' | 'spacer';
+export type ElementType = 'heading' | 'text' | 'image' | 'button' | 'spacer' | 'link' | 'table' | 'blockquote' | 'list' | 'divider';
 
 export interface BaseElement {
   id: string;
@@ -36,4 +36,48 @@ export interface SpacerElement extends BaseElement {
   height: number; // in pixels
 }
 
-export type PageElement = HeadingElement | TextElement | ImageElement | ButtonElement | SpacerElement;
+export interface LinkElement extends BaseElement {
+  type: 'link';
+  text: string;
+  href: string;
+  target?: '_blank' | '_self' | '_parent' | '_top';
+}
+
+export interface TableElement extends BaseElement {
+  type: 'table';
+  // For simplicity, we'll start with a placeholder.
+  // In a real app, this would have a more complex structure for rows/cells.
+  numRows: number;
+  numCols: number;
+  caption?: string;
+}
+
+export interface BlockquoteElement extends BaseElement {
+  type: 'blockquote';
+  content: string;
+  citation?: string;
+}
+
+export interface ListElement extends BaseElement {
+  type: 'list';
+  items: string[]; // Each string can be a list item. Basic HTML could be allowed per item.
+  ordered: boolean;
+}
+
+export interface DividerElement extends BaseElement {
+  type: 'divider';
+  // Dividers might not need specific props beyond styles,
+  // but we could add thickness, style (solid, dashed), etc. later.
+}
+
+export type PageElement =
+  | HeadingElement
+  | TextElement
+  | ImageElement
+  | ButtonElement
+  | SpacerElement
+  | LinkElement
+  | TableElement
+  | BlockquoteElement
+  | ListElement
+  | DividerElement;

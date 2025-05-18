@@ -1,6 +1,6 @@
 "use client";
 
-import type { PageElement } from '@/components/editor/types';
+import type { PageElement, HeadingElement, LinkElement, TableElement, BlockquoteElement, ListElement, DividerElement } from '@/components/editor/types';
 import { pageElementToHtml } from '@/lib/editor-utils';
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
@@ -51,7 +51,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     let newElement: PageElement;
     switch (type) {
       case 'heading':
-        newElement = { id, type, content: 'New Heading', level: 1, ...partialElement } as PageElement;
+        newElement = { id, type, content: `New Heading ${ (partialElement as HeadingElement)?.level || 1}`, level: (partialElement as HeadingElement)?.level || 1, ...partialElement } as PageElement;
         break;
       case 'text':
         newElement = { id, type, content: 'New paragraph text.', ...partialElement } as PageElement;
@@ -64,6 +64,21 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         break;
       case 'spacer':
         newElement = { id, type, height: 20, ...partialElement } as PageElement;
+        break;
+      case 'link':
+        newElement = { id, type, text: 'Link Text', href: 'https://example.com', target: '_blank', ...partialElement } as LinkElement;
+        break;
+      case 'table':
+        newElement = { id, type, numRows: 3, numCols: 3, caption: 'New Table', ...partialElement } as TableElement;
+        break;
+      case 'blockquote':
+        newElement = { id, type, content: 'This is a quote.', citation: 'Source', ...partialElement } as BlockquoteElement;
+        break;
+      case 'list':
+        newElement = { id, type, items: ['List item 1', 'List item 2'], ordered: (partialElement as ListElement)?.ordered || false, ...partialElement } as ListElement;
+        break;
+      case 'divider':
+        newElement = { id, type, ...partialElement } as DividerElement;
         break;
       default:
         throw new Error(`Unsupported element type: ${type}`);

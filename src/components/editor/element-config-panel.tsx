@@ -1,7 +1,7 @@
 "use client";
 
 import { useEditor } from '@/contexts/editor-context';
-import type { PageElement, HeadingElement, TextElement, ImageElement, ButtonElement, SpacerElement } from './types';
+import type { PageElement, HeadingElement, TextElement, ImageElement, ButtonElement, SpacerElement, LinkElement, TableElement, BlockquoteElement, ListElement } from './types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AIAssistantPanel } from '@/components/ai/ai-assistant-panel';
 import { Bot } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export function ElementConfigPanel() {
   const { selectedElementId, pageElements, updateElement, getPageAsHtml } = useEditor();
@@ -35,12 +36,31 @@ export function ElementConfigPanel() {
     updateElement(selectedElement.id, { [key]: value });
   };
 
+  const handleStyleChange = (styleKey: keyof React.CSSProperties, value: string | number) => {
+    updateElement(selectedElement.id, {
+      styles: {
+        ...selectedElement.styles,
+        [styleKey]: value,
+      },
+    });
+  };
+
   const renderCommonFields = (element: PageElement) => (
     <>
       <div className="space-y-1">
         <Label htmlFor={`element-id-${element.id}`}>Element ID (Read-only)</Label>
         <Input id={`element-id-${element.id}`} value={element.id} readOnly disabled className="text-xs" />
       </div>
+      {/* Basic Style Controls - Example for Margin Top */}
+      {/* <div className="space-y-1">
+        <Label htmlFor={`style-marginTop-${element.id}`}>Margin Top (px)</Label>
+        <Input
+          id={`style-marginTop-${element.id}`}
+          type="number"
+          value={element.styles?.marginTop ? String(element.styles.marginTop).replace('px', '') : ''}
+          onChange={(e) => handleStyleChange('marginTop', e.target.value ? `${e.target.value}px` : '')}
+        />
+      </div> */}
     </>
   );
 
@@ -171,6 +191,132 @@ export function ElementConfigPanel() {
             />
           </div>
         );
+      case 'link':
+        const linkEl = element as LinkElement;
+        return (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor={`link-text-${element.id}`}>Text</Label>
+              <Input
+                id={`link-text-${element.id}`}
+                value={linkEl.text}
+                onChange={(e) => handleChange('text', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`link-href-${element.id}`}>URL (href)</Label>
+              <Input
+                id={`link-href-${element.id}`}
+                value={linkEl.href}
+                onChange={(e) => handleChange('href', e.target.value)}
+                placeholder="https://example.com"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`link-target-${element.id}`}>Target</Label>
+              <Select
+                value={linkEl.target || '_blank'}
+                onValueChange={(value) => handleChange('target', value as LinkElement['target'])}
+              >
+                <SelectTrigger id={`link-target-${element.id}`}>
+                  <SelectValue placeholder="Select target" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_blank">_blank (New Tab)</SelectItem>
+                  <SelectItem value="_self">_self (Same Tab)</SelectItem>
+                  <SelectItem value="_parent">_parent</SelectItem>
+                  <SelectItem value="_top">_top</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        );
+      case 'table':
+        const tableEl = element as TableElement;
+        return (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor={`table-caption-${element.id}`}>Caption</Label>
+              <Input
+                id={`table-caption-${element.id}`}
+                value={tableEl.caption || ''}
+                onChange={(e) => handleChange('caption', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`table-rows-${element.id}`}>Number of Rows</Label>
+              <Input
+                id={`table-rows-${element.id}`}
+                type="number"
+                value={tableEl.numRows}
+                onChange={(e) => handleChange('numRows', parseInt(e.target.value) || 1)}
+                min="1"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`table-cols-${element.id}`}>Number of Columns</Label>
+              <Input
+                id={`table-cols-${element.id}`}
+                type="number"
+                value={tableEl.numCols}
+                onChange={(e) => handleChange('numCols', parseInt(e.target.value) || 1)}
+                min="1"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Table content is currently fixed. More advanced editing coming soon.</p>
+          </>
+        );
+      case 'blockquote':
+        const bqEl = element as BlockquoteElement;
+        return (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor={`blockquote-content-${element.id}`}>Quote Content</Label>
+              <Textarea
+                id={`blockquote-content-${element.id}`}
+                value={bqEl.content}
+                onChange={(e) => handleChange('content', e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`blockquote-citation-${element.id}`}>Citation (Source)</Label>
+              <Input
+                id={`blockquote-citation-${element.id}`}
+                value={bqEl.citation || ''}
+                onChange={(e) => handleChange('citation', e.target.value)}
+              />
+            </div>
+          </>
+        );
+      case 'list':
+        const listEl = element as ListElement;
+        return (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor={`list-items-${element.id}`}>List Items (one per line)</Label>
+              <Textarea
+                id={`list-items-${element.id}`}
+                value={listEl.items.join('\n')}
+                onChange={(e) => handleChange('items', e.target.value.split('\n'))}
+                rows={5}
+              />
+            </div>
+            <div className="flex items-center space-x-2 mt-2">
+              <Checkbox
+                id={`list-ordered-${element.id}`}
+                checked={listEl.ordered}
+                onCheckedChange={(checked) => handleChange('ordered', !!checked)}
+              />
+              <Label htmlFor={`list-ordered-${element.id}`} className="text-sm font-normal">
+                Ordered List (Numbered)
+              </Label>
+            </div>
+          </>
+        );
+      case 'divider':
+         // No specific fields for divider yet, only common styles
+        return <p className="text-xs text-muted-foreground">Configure divider styles (e.g., margin, color) via advanced style options if available.</p>;
       default:
         return <p>No configuration available for this element type.</p>;
     }
@@ -182,15 +328,17 @@ export function ElementConfigPanel() {
         <div className="p-4 space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold text-card-foreground">Properties</h3>
-            <AIAssistantPanel 
-              elementHtml={getPageAsHtml(selectedElement.id)} 
-              elementId={selectedElement.id}
-              triggerButton={
-                <Button variant="outline" size="sm">
-                  <Bot className="mr-2 h-4 w-4" /> AI Optimize
-                </Button>
-              }
-            />
+            {selectedElement.type !== 'divider' && selectedElement.type !== 'spacer' && (
+                 <AIAssistantPanel 
+                  elementHtml={getPageAsHtml(selectedElement.id)} 
+                  elementId={selectedElement.id}
+                  triggerButton={
+                    <Button variant="outline" size="sm">
+                      <Bot className="mr-2 h-4 w-4" /> AI Optimize
+                    </Button>
+                  }
+                />
+            )}
           </div>
           {renderCommonFields(selectedElement)}
           {renderSpecificFields(selectedElement)}
