@@ -14,13 +14,36 @@ interface PageElementRendererProps {
 export function PageElementRenderer({ element, isSelected, onClick, className }: PageElementRendererProps) {
   const baseClasses = "cursor-pointer transition-all duration-150 ease-in-out";
   const selectedClasses = isSelected ? "ring-2 ring-offset-2 ring-primary shadow-lg" : "hover:shadow-md";
-  const combinedClassName = `${baseClasses} ${selectedClasses} ${className || ''} w-full`; // Added w-full for block behavior
+  // Ensure w-full is applied unless specific styles override width
+  const defaultWidthClass = element.styles?.width ? '' : 'w-full';
+  const combinedClassName = `${baseClasses} ${selectedClasses} ${defaultWidthClass} ${className || ''}`;
+
 
   const handleClick = () => {
     if (onClick) {
       onClick(element.id);
     }
   };
+
+  const renderImage = (imgElement: ImageElement) => (
+    <NextImage 
+      src={imgElement.src} 
+      alt={imgElement.alt} 
+      width={600} // Default width, can be overridden by styles
+      height={400} // Default height, can be overridden by styles
+      className="object-contain" // Ensures image fits, can be customized further
+      data-ai-hint={imgElement['data-ai-hint']}
+      // Apply element styles to the NextImage component directly or to a wrapper
+      // For simplicity, applying to a wrapper is often easier.
+      // Here, we apply width/height from styles if present, otherwise use defaults.
+      style={{ 
+        width: imgElement.styles?.width || '100%', 
+        height: imgElement.styles?.height || 'auto',
+        display: imgElement.styles?.display || 'block', // ensure image is block for centering etc.
+        margin: imgElement.styles?.margin, // allow margin overrides
+      }}
+    />
+  );
 
   switch (element.type) {
     case 'heading':
@@ -30,26 +53,32 @@ export function PageElementRenderer({ element, isSelected, onClick, className }:
       return <div className={combinedClassName} style={element.styles} onClick={handleClick} dangerouslySetInnerHTML={{ __html: (element as TextElement).content }} />;
     case 'image':
       const imgElement = element as ImageElement;
+      const imageOutput = renderImage(imgElement);
+      if (imgElement.linkHref) {
+        return (
+          <a href={imgElement.linkHref} target="_blank" rel="noopener noreferrer" className={`${combinedClassName} block`} style={{ ...element.styles, textDecoration: 'none' }} onClick={handleClick}>
+            {imageOutput}
+          </a>
+        );
+      }
       return (
-        <div className={`${combinedClassName} relative h-auto max-w-full`} style={element.styles} onClick={handleClick}>
-           <NextImage 
-            src={imgElement.src} 
-            alt={imgElement.alt} 
-            width={600} 
-            height={400} 
-            className="object-contain"
-            data-ai-hint={imgElement['data-ai-hint']}
-            style={{ width: '100%', height: 'auto' }} 
-            />
+         <div className={`${combinedClassName} relative h-auto`} style={{...element.styles, width: element.styles?.width || '100%'}} onClick={handleClick}>
+           {imageOutput}
         </div>
       );
     case 'button':
       const btnElement = element as ButtonElement;
+      // Apply text-align for button positioning
+      const buttonContainerStyle: React.CSSProperties = { 
+        display: 'flex', 
+        justifyContent: element.styles?.textAlign === 'center' ? 'center' : element.styles?.textAlign === 'right' ? 'flex-end' : 'flex-start',
+        width: '100%', // Ensure the container takes full width for alignment to work
+      };
       return (
-        <div onClick={handleClick} className={combinedClassName} style={{ display: 'flex', justifyContent: element.styles?.textAlign === 'center' ? 'center' : element.styles?.textAlign === 'right' ? 'flex-end' : 'flex-start'}}>
+        <div onClick={handleClick} className={combinedClassName} style={buttonContainerStyle}>
           <ShadButton
             variant={btnElement.variant}
-            style={element.styles}
+            style={element.styles} // Individual button styles applied here
             asChild={!!btnElement.actionUrl}
           >
             {btnElement.actionUrl ? <a href={btnElement.actionUrl}>{btnElement.text}</a> : btnElement.text}
@@ -63,7 +92,6 @@ export function PageElementRenderer({ element, isSelected, onClick, className }:
       return <a href={linkEl.href} target={linkEl.target || '_blank'} rel={linkEl.target === '_blank' ? 'noopener noreferrer' : undefined} className={combinedClassName} style={element.styles} onClick={handleClick}>{linkEl.text}</a>;
     case 'table':
       const tableEl = element as TableElement;
-      // Basic table rendering
       return (
         <table className={`${combinedClassName} border-collapse border border-slate-400`} style={element.styles} onClick={handleClick}>
           {tableEl.caption && <caption className="caption-bottom p-2 text-sm text-muted-foreground">{tableEl.caption}</caption>}

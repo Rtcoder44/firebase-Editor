@@ -36,7 +36,7 @@ export function ElementConfigPanel() {
     updateElement(selectedElement.id, { [key]: value });
   };
 
-  const handleStyleChange = (styleKey: keyof React.CSSProperties, value: string | number) => {
+  const handleStyleChange = (styleKey: keyof React.CSSProperties, value: string | number | undefined) => {
     updateElement(selectedElement.id, {
       styles: {
         ...selectedElement.styles,
@@ -51,16 +51,6 @@ export function ElementConfigPanel() {
         <Label htmlFor={`element-id-${element.id}`}>Element ID (Read-only)</Label>
         <Input id={`element-id-${element.id}`} value={element.id} readOnly disabled className="text-xs" />
       </div>
-      {/* Basic Style Controls - Example for Margin Top */}
-      {/* <div className="space-y-1">
-        <Label htmlFor={`style-marginTop-${element.id}`}>Margin Top (px)</Label>
-        <Input
-          id={`style-marginTop-${element.id}`}
-          type="number"
-          value={element.styles?.marginTop ? String(element.styles.marginTop).replace('px', '') : ''}
-          onChange={(e) => handleStyleChange('marginTop', e.target.value ? `${e.target.value}px` : '')}
-        />
-      </div> */}
     </>
   );
 
@@ -94,20 +84,42 @@ export function ElementConfigPanel() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label htmlFor={`style-fontSize-heading-${element.id}`}>Font Size (px)</Label>
+              <Input
+                id={`style-fontSize-heading-${element.id}`}
+                type="number"
+                placeholder="e.g., 16"
+                value={element.styles?.fontSize ? String(element.styles.fontSize).replace('px', '') : ''}
+                onChange={(e) => handleStyleChange('fontSize', e.target.value ? `${e.target.value}px` : undefined)}
+              />
+            </div>
           </>
         );
       case 'text':
         const textEl = element as TextElement;
         return (
-          <div className="space-y-1">
-            <Label htmlFor={`text-content-${element.id}`}>Content (HTML allowed)</Label>
-            <Textarea
-              id={`text-content-${element.id}`}
-              value={textEl.content}
-              onChange={(e) => handleChange('content', e.target.value)}
-              rows={5}
-            />
-          </div>
+          <>
+            <div className="space-y-1">
+              <Label htmlFor={`text-content-${element.id}`}>Content (HTML allowed)</Label>
+              <Textarea
+                id={`text-content-${element.id}`}
+                value={textEl.content}
+                onChange={(e) => handleChange('content', e.target.value)}
+                rows={5}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`style-fontSize-text-${element.id}`}>Font Size (px)</Label>
+              <Input
+                id={`style-fontSize-text-${element.id}`}
+                type="number"
+                placeholder="e.g., 16"
+                value={element.styles?.fontSize ? String(element.styles.fontSize).replace('px', '') : ''}
+                onChange={(e) => handleStyleChange('fontSize', e.target.value ? `${e.target.value}px` : undefined)}
+              />
+            </div>
+          </>
         );
       case 'image':
         const imageEl = element as ImageElement;
@@ -135,6 +147,15 @@ export function ElementConfigPanel() {
                 id={`image-ai-hint-${element.id}`}
                 value={imageEl['data-ai-hint'] || ''}
                 onChange={(e) => handleChange('data-ai-hint', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`image-linkHref-${element.id}`}>Link URL (Optional)</Label>
+              <Input
+                id={`image-linkHref-${element.id}`}
+                value={imageEl.linkHref || ''}
+                onChange={(e) => handleChange('linkHref', e.target.value)}
+                placeholder="https://example.com"
               />
             </div>
           </>

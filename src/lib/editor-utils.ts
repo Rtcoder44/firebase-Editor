@@ -1,9 +1,14 @@
-import type { PageElement, TableElement, ListElement, BlockquoteElement, LinkElement } from "@/components/editor/types";
+import type { PageElement, TableElement, ListElement, BlockquoteElement, LinkElement, ImageElement } from "@/components/editor/types";
 
 function objectToCssString(styles?: React.CSSProperties): string {
   if (!styles) return '';
   return Object.entries(styles)
-    .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}:${value}`)
+    .map(([key, value]) => {
+      if (value === undefined || value === null || value === '') return null; // Skip undefined/null/empty styles
+      const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      return `${cssKey}:${value}`;
+    })
+    .filter(Boolean) // Remove null entries
     .join(';');
 }
 
@@ -15,19 +20,23 @@ export function pageElementToHtml(element: PageElement): string {
     case 'heading':
       return `<h${element.level}${styleAttr}>${element.content}</h${element.level}>`;
     case 'text':
-      // Assuming content can be basic HTML for rich text. Consider sanitizing if needed.
-      return `<div${styleAttr}>${element.content}</div>`; // Changed to div for block display, p might add unwanted margins
+      return `<div${styleAttr}>${element.content}</div>`;
     case 'image':
-      return `<img src="${element.src}" alt="${element.alt}"${styleAttr} data-ai-hint="${element['data-ai-hint'] || ''}" />`;
+      const imgEl = element as ImageElement;
+      const imgTag = `<img src="${imgEl.src}" alt="${imgEl.alt}"${styleAttr} data-ai-hint="${imgEl['data-ai-hint'] || ''}" />`;
+      if (imgEl.linkHref) {
+        return `<a href="${imgEl.linkHref}" target="_blank" rel="noopener noreferrer">${imgTag}</a>`;
+      }
+      return imgTag;
     case 'button':
-      const buttonClass = `btn btn-${element.variant}`; // Assuming some base 'btn' class and variant specific
+      const buttonClass = `btn btn-${element.variant}`; 
       let buttonHtml = `<button class="${buttonClass}"${styleAttr}>${element.text}</button>`;
       if (element.actionUrl) {
         buttonHtml = `<a href="${element.actionUrl}" class="${buttonClass}"${styleAttr} role="button">${element.text}</a>`;
       }
       return buttonHtml;
     case 'spacer':
-      return `<div style="height: ${element.height}px;${styleString}"></div>`;
+      return `<div style="height: ${element.height}px;${styleString}"></div>`; // styleString might be redundant if height is the only style
     case 'link':
       const linkEl = element as LinkElement;
       return `<a href="${linkEl.href}" target="${linkEl.target || '_blank'}" rel="${linkEl.target === '_blank' ? 'noopener noreferrer' : ''}"${styleAttr}>${linkEl.text}</a>`;
@@ -65,7 +74,6 @@ export function pageElementToHtml(element: PageElement): string {
       const ListTag = listEl.ordered ? 'ol' : 'ul';
       let listHtml = `<${ListTag}${styleAttr} class="list-inside ${listEl.ordered ? 'list-decimal' : 'list-disc'} pl-5">`;
       listEl.items.forEach(item => {
-        // Assuming item can be basic HTML. Sanitize if needed.
         listHtml += `<li>${item}</li>`;
       });
       listHtml += `</${ListTag}>`;
@@ -73,7 +81,6 @@ export function pageElementToHtml(element: PageElement): string {
     case 'divider':
       return `<hr${styleAttr} class="my-4 border-gray-300" />`;
     default:
-      // Handle unknown elements or return an empty string/comment
       const unknownElement = element as any;
       return `<!-- Unknown element type: ${unknownElement.type} -->`;
   }

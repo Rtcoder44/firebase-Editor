@@ -22,6 +22,7 @@ export interface ImageElement extends BaseElement {
   src: string;
   alt: string;
   'data-ai-hint'?: string;
+  linkHref?: string; // New: Optional URL to make the image a link
 }
 
 export interface ButtonElement extends BaseElement {
