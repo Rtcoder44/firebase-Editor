@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { PageElement, HeadingElement, LinkElement, TableElement, BlockquoteElement, ListElement, DividerElement } from '@/components/editor/types';
@@ -45,19 +46,60 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('versaPageElements', JSON.stringify(pageElements));
   }, [pageElements]);
 
+  // Listen for messages from parent window (e.g., to set initial content)
+  useEffect(() => {
+    const handleIncomingMessage = (event: MessageEvent) => {
+      // IMPORTANT: In a production environment, you should validate event.origin
+      // to ensure messages are only accepted from trusted sources.
+      // Example: if (event.origin !== 'https://your-trusted-parent-domain.com') return;
+
+      if (event.data && event.data.type === "set-content") {
+        const content = event.data.content;
+        if (Array.isArray(content)) {
+          // Assuming content is PageElement[]
+          // You might want to add validation here to ensure the content structure is correct
+          setPageElements(content.map(el => ({ ...el, id: el.id || uuidv4() }))); // Ensure IDs if not present
+          setSelectedElementId(null);
+          console.log("Editor content set from parent window.");
+        } else {
+          console.warn("Received set-content message, but content was not an array:", content);
+        }
+      }
+    };
+
+    window.addEventListener("message", handleIncomingMessage);
+    return () => {
+      window.removeEventListener("message", handleIncomingMessage);
+    };
+  }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount
+
+  // Post message back to parent when content changes
+  useEffect(() => {
+    // Ensure this doesn't run on the very first render if pageElements is empty,
+    // unless desired. For now, it posts on every change including load from localStorage.
+    if (window.parent && window.parent !== window) {
+      // Using pageElements as "yourEditorContent"
+      window.parent.postMessage(
+        { type: "content-update", content: pageElements },
+        "*" // IMPORTANT: For production, specify the target origin instead of "*"
+      );
+      console.log("Editor content update posted to parent window.");
+    }
+  }, [pageElements]);
+
 
   const addElement = useCallback((type: PageElement['type'], partialElement?: Partial<PageElement>) => {
     const id = uuidv4();
     let newElement: PageElement;
     switch (type) {
       case 'heading':
-        newElement = { id, type, content: `New Heading ${ (partialElement as HeadingElement)?.level || 1}`, level: (partialElement as HeadingElement)?.level || 1, ...partialElement } as PageElement;
+        newElement = { id, type, content: `New Heading ${ (partialElement as HeadingElement)?.level || 1}`, level: (partialElement as HeadingElement)?.level || 1, styles: { fontSize: '24px'}, ...partialElement } as PageElement;
         break;
       case 'text':
-        newElement = { id, type, content: 'New paragraph text.', ...partialElement } as PageElement;
+        newElement = { id, type, content: 'New paragraph text.', styles: { fontSize: '16px'}, ...partialElement } as PageElement;
         break;
       case 'image':
-        newElement = { id, type, src: 'https://placehold.co/600x400.png', alt: 'Placeholder Image', ...partialElement, "data-ai-hint": "abstract texture" } as PageElement;
+        newElement = { id, type, src: 'https://placehold.co/600x400.png', alt: 'Placeholder Image', "data-ai-hint": "abstract texture", ...partialElement } as PageElement;
         break;
       case 'button':
         newElement = { id, type, text: 'Click Me', variant: 'default', ...partialElement } as PageElement;
@@ -89,7 +131,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateElement = useCallback((id: string, updates: Partial<PageElement>) => {
-    setPageElements(prev => prev.map(el => (el.id === id ? { ...el, ...updates } : el)));
+    setPageElements(prev => prev.map(el => (el.id === id ? { ...el, ...updates, styles: { ...el.styles, ...(updates.styles || {}) } } : el)));
   }, []);
 
   const removeElement = useCallback((id: string) => {
