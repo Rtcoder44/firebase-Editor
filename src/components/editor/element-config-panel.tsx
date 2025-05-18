@@ -16,11 +16,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AIAssistantPanel } from '@/components/ai/ai-assistant-panel';
-import { Bot } from 'lucide-react';
+import { Bot, Loader2, UploadCloud } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import React, { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export function ElementConfigPanel() {
   const { selectedElementId, pageElements, updateElement, getPageAsHtml } = useEditor();
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
 
   const selectedElement = pageElements.find(el => el.id === selectedElementId);
 
@@ -52,10 +56,59 @@ export function ElementConfigPanel() {
       styles: {
         ...currentStyles,
         fontSize: defaultHeadingFontSizesMap[newLevel],
-        // fontWeight is often bold by default for headings, ensure it's preserved or set
         fontWeight: currentStyles?.fontWeight || 'bold', 
       },
     });
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    const file = event.target.files[0];
+    if (!selectedElement || selectedElement.type !== 'image') return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('coverImage', file);
+
+    try {
+      // Assuming your backend is on the same domain or proxied correctly.
+      // If editor.techiert.com is different from techiert.com (where /upload is),
+      // ensure CORS is handled on your backend.
+      const response = await fetch('/upload', { // This path should resolve to your backend endpoint
+        method: 'POST',
+        body: formData,
+        // Add headers if your authMiddleware requires them (e.g., Authorization: `Bearer ${token}`)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed with status: ' + response.status }));
+        throw new Error(errorData.error || `Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (result.imageUrl) {
+        updateElement(selectedElement.id, { src: result.imageUrl });
+        toast({
+          title: 'Image Uploaded',
+          description: 'Image successfully uploaded and updated.',
+        });
+      } else {
+        throw new Error('Image URL not found in response.');
+      }
+    } catch (error: any) {
+      console.error("Image upload error:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: error.message || 'Could not upload image.',
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset file input value so the same file can be selected again if needed
+      event.target.value = '';
+    }
   };
 
 
@@ -175,14 +228,45 @@ export function ElementConfigPanel() {
                 id={`image-src-${element.id}`}
                 value={imageEl.src}
                 onChange={(e) => handleChange('src', e.target.value)}
+                disabled={isUploading}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 mt-2">
+              <Label htmlFor={`image-upload-${element.id}`} className="cursor-pointer">
+                Or Upload Image
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id={`image-upload-${element.id}`}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden" 
+                  disabled={isUploading}
+                />
+                <Button 
+                  variant="outline" 
+                  onClick={() => document.getElementById(`image-upload-${element.id}`)?.click()} 
+                  disabled={isUploading}
+                  className="w-full"
+                >
+                  {isUploading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                  )}
+                  {isUploading ? 'Uploading...' : 'Choose File'}
+                </Button>
+              </div>
+              {isUploading && <p className="text-xs text-muted-foreground mt-1">Please wait for the upload to complete.</p>}
+            </div>
+            <div className="space-y-1 mt-2">
               <Label htmlFor={`image-alt-${element.id}`}>Alt Text</Label>
               <Input
                 id={`image-alt-${element.id}`}
                 value={imageEl.alt}
                 onChange={(e) => handleChange('alt', e.target.value)}
+                disabled={isUploading}
               />
             </div>
             <div className="space-y-1">
@@ -200,6 +284,7 @@ export function ElementConfigPanel() {
                 value={imageEl.linkHref || ''}
                 onChange={(e) => handleChange('linkHref', e.target.value)}
                 placeholder="https://example.com"
+                disabled={isUploading}
               />
             </div>
           </>
@@ -412,3 +497,4 @@ export function ElementConfigPanel() {
   );
 }
 
+    
