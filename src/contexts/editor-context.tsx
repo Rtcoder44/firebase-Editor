@@ -23,6 +23,10 @@ interface EditorContextType {
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
+const defaultHeadingFontSizes: { [key: number]: string } = {
+  1: '36px', 2: '30px', 3: '24px', 4: '20px', 5: '18px', 6: '16px',
+};
+
 export function EditorProvider({ children }: { children: ReactNode }) {
   const [pageElements, setPageElements] = useState<PageElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -56,9 +60,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       if (event.data && event.data.type === "set-content") {
         const content = event.data.content;
         if (Array.isArray(content)) {
-          // Assuming content is PageElement[]
-          // You might want to add validation here to ensure the content structure is correct
-          setPageElements(content.map(el => ({ ...el, id: el.id || uuidv4() }))); // Ensure IDs if not present
+          setPageElements(content.map(el => ({ ...el, id: el.id || uuidv4() }))); 
           setSelectedElementId(null);
           console.log("Editor content set from parent window.");
         } else {
@@ -71,19 +73,16 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("message", handleIncomingMessage);
     };
-  }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount
+  }, []); 
 
   // Post message back to parent when content changes
   useEffect(() => {
-    // Ensure this doesn't run on the very first render if pageElements is empty,
-    // unless desired. For now, it posts on every change including load from localStorage.
     if (window.parent && window.parent !== window) {
-      // Using pageElements as "yourEditorContent"
       window.parent.postMessage(
         { type: "content-update", content: pageElements },
         "*" // IMPORTANT: For production, specify the target origin instead of "*"
       );
-      console.log("Editor content update posted to parent window.");
+      // console.log("Editor content update posted to parent window."); // Optional: for debugging
     }
   }, [pageElements]);
 
@@ -93,34 +92,58 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     let newElement: PageElement;
     switch (type) {
       case 'heading':
-        newElement = { id, type, content: `New Heading ${ (partialElement as HeadingElement)?.level || 1}`, level: (partialElement as HeadingElement)?.level || 1, styles: { fontSize: '24px'}, ...partialElement } as PageElement;
+        const level = (partialElement as HeadingElement)?.level || 1;
+        const initialHeadingStyles = {
+          fontSize: defaultHeadingFontSizes[level],
+          fontWeight: 'bold', // Headings are bold by default
+          ...(partialElement?.styles || {}),
+        };
+        newElement = {
+          id,
+          type,
+          content: `New Heading ${level}`,
+          level: level,
+          ...(partialElement || {}),
+          styles: initialHeadingStyles,
+        } as HeadingElement;
         break;
       case 'text':
-        newElement = { id, type, content: 'New paragraph text.', styles: { fontSize: '16px'}, ...partialElement } as PageElement;
+        const initialTextStyles = {
+          fontSize: '16px',
+          fontWeight: 'normal',
+          ...(partialElement?.styles || {}),
+        };
+        newElement = {
+          id,
+          type,
+          content: 'New paragraph text.',
+          ...(partialElement || {}),
+          styles: initialTextStyles,
+        } as PageElement;
         break;
       case 'image':
-        newElement = { id, type, src: 'https://placehold.co/600x400.png', alt: 'Placeholder Image', "data-ai-hint": "abstract texture", ...partialElement } as PageElement;
+        newElement = { id, type, src: 'https://placehold.co/600x400.png', alt: 'Placeholder Image', "data-ai-hint": "abstract texture", ...(partialElement || {}) } as PageElement;
         break;
       case 'button':
-        newElement = { id, type, text: 'Click Me', variant: 'default', ...partialElement } as PageElement;
+        newElement = { id, type, text: 'Click Me', variant: 'default', ...(partialElement || {}) } as PageElement;
         break;
       case 'spacer':
-        newElement = { id, type, height: 20, ...partialElement } as PageElement;
+        newElement = { id, type, height: 20, ...(partialElement || {}) } as PageElement;
         break;
       case 'link':
-        newElement = { id, type, text: 'Link Text', href: 'https://example.com', target: '_blank', ...partialElement } as LinkElement;
+        newElement = { id, type, text: 'Link Text', href: 'https://example.com', target: '_blank', ...(partialElement || {}) } as LinkElement;
         break;
       case 'table':
-        newElement = { id, type, numRows: 3, numCols: 3, caption: 'New Table', ...partialElement } as TableElement;
+        newElement = { id, type, numRows: 3, numCols: 3, caption: 'New Table', ...(partialElement || {}) } as TableElement;
         break;
       case 'blockquote':
-        newElement = { id, type, content: 'This is a quote.', citation: 'Source', ...partialElement } as BlockquoteElement;
+        newElement = { id, type, content: 'This is a quote.', citation: 'Source', ...(partialElement || {}) } as BlockquoteElement;
         break;
       case 'list':
-        newElement = { id, type, items: ['List item 1', 'List item 2'], ordered: (partialElement as ListElement)?.ordered || false, ...partialElement } as ListElement;
+        newElement = { id, type, items: ['List item 1', 'List item 2'], ordered: (partialElement as ListElement)?.ordered || false, ...(partialElement || {}) } as ListElement;
         break;
       case 'divider':
-        newElement = { id, type, ...partialElement } as DividerElement;
+        newElement = { id, type, ...(partialElement || {}) } as DividerElement;
         break;
       default:
         throw new Error(`Unsupported element type: ${type}`);
@@ -196,3 +219,6 @@ export function useEditor(): EditorContextType {
   }
   return context;
 }
+
+// Export for use in ElementConfigPanel
+export const defaultHeadingFontSizesMap = defaultHeadingFontSizes;

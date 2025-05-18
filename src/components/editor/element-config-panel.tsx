@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEditor } from '@/contexts/editor-context';
+import { useEditor, defaultHeadingFontSizesMap } from '@/contexts/editor-context';
 import type { PageElement, HeadingElement, TextElement, ImageElement, ButtonElement, SpacerElement, LinkElement, TableElement, BlockquoteElement, ListElement } from './types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +46,19 @@ export function ElementConfigPanel() {
     });
   };
 
+  const handleHeadingLevelChange = (elementId: string, currentStyles: React.CSSProperties | undefined, newLevel: number) => {
+    updateElement(elementId, {
+      level: newLevel,
+      styles: {
+        ...currentStyles,
+        fontSize: defaultHeadingFontSizesMap[newLevel],
+        // fontWeight is often bold by default for headings, ensure it's preserved or set
+        fontWeight: currentStyles?.fontWeight || 'bold', 
+      },
+    });
+  };
+
+
   const renderCommonFields = (element: PageElement) => (
     <>
       <div className="space-y-1">
@@ -72,7 +86,7 @@ export function ElementConfigPanel() {
               <Label htmlFor={`heading-level-${element.id}`}>Level</Label>
               <Select
                 value={String(headingEl.level)}
-                onValueChange={(value) => handleChange('level', parseInt(value))}
+                onValueChange={(value) => handleHeadingLevelChange(element.id, headingEl.styles, parseInt(value))}
               >
                 <SelectTrigger id={`heading-level-${element.id}`}>
                   <SelectValue placeholder="Select level" />
@@ -89,10 +103,25 @@ export function ElementConfigPanel() {
               <Input
                 id={`style-fontSize-heading-${element.id}`}
                 type="number"
-                placeholder="e.g., 16"
+                placeholder="e.g., 36"
                 value={element.styles?.fontSize ? String(element.styles.fontSize).replace('px', '') : ''}
                 onChange={(e) => handleStyleChange('fontSize', e.target.value ? `${e.target.value}px` : undefined)}
               />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`style-fontWeight-heading-${element.id}`}>Font Weight</Label>
+              <Select
+                value={element.styles?.fontWeight?.toString() || 'bold'}
+                onValueChange={(value) => handleStyleChange('fontWeight', value as 'normal' | 'bold')}
+              >
+                <SelectTrigger id={`style-fontWeight-heading-${element.id}`}>
+                  <SelectValue placeholder="Select weight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </>
         );
@@ -118,6 +147,21 @@ export function ElementConfigPanel() {
                 value={element.styles?.fontSize ? String(element.styles.fontSize).replace('px', '') : ''}
                 onChange={(e) => handleStyleChange('fontSize', e.target.value ? `${e.target.value}px` : undefined)}
               />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`style-fontWeight-text-${element.id}`}>Font Weight</Label>
+              <Select
+                value={element.styles?.fontWeight?.toString() || 'normal'}
+                onValueChange={(value) => handleStyleChange('fontWeight', value as 'normal' | 'bold')}
+              >
+                <SelectTrigger id={`style-fontWeight-text-${element.id}`}>
+                  <SelectValue placeholder="Select weight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </>
         );
@@ -336,7 +380,6 @@ export function ElementConfigPanel() {
           </>
         );
       case 'divider':
-         // No specific fields for divider yet, only common styles
         return <p className="text-xs text-muted-foreground">Configure divider styles (e.g., margin, color) via advanced style options if available.</p>;
       default:
         return <p>No configuration available for this element type.</p>;
@@ -368,3 +411,4 @@ export function ElementConfigPanel() {
     </div>
   );
 }
+
